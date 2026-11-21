@@ -100,3 +100,17 @@ module "storage" {
   resource_group_name = azurerm_resource_group.this.name
   tags                = local.tags
 }
+
+
+module "keyvault" {
+  source = "../../modules/keyvault"
+
+  project             = var.project
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this.name
+  tags                = local.tags
+
+  store_db_password = var.enable_database
+  db_admin_password = module.database.admin_password
+}
