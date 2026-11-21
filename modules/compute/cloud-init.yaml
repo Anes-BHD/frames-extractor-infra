@@ -1,0 +1,19 @@
+#cloud-config
+package_update: true
+packages:
+  - nginx
+write_files:
+  - path: /usr/local/bin/render-page.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      ZONE=$(curl -s -H "Metadata:true" "http://169.254.169.254/metadata/instance/compute/zone?api-version=2021-02-01&format=text")
+      HOST=$(hostname)
+      cat > /var/www/html/index.html <<EOF
+      <h1>frames-dev</h1>
+      <p>Served by: $HOST (zone $ZONE)</p>
+      EOF
+runcmd:
+  - /usr/local/bin/render-page.sh
+  - systemctl enable --now nginx
+  
