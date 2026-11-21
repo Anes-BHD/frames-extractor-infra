@@ -1,0 +1,5 @@
+subscription_id      = "00000000-0000-0000-0000-000000000000"
+enable_nat_gateway   = true
+enable_app_gateway   = true
+enable_database      = true
+admin_ssh_public_key = "ssh-ed25519 AAAA... you@your-host"
