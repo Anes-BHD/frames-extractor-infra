@@ -1,0 +1,19 @@
+# Terraform local state and caches
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Plan files hold secrets (state + generated passwords)
+*.tfplan
+
+# Real variable files and backend config stay local
+*.tfvars
+!*.tfvars.example
+backend.hcl
+!backend.hcl.example
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
