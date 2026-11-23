@@ -3,3 +3,11 @@ enable_nat_gateway   = true
 enable_app_gateway   = true
 enable_database      = true
 admin_ssh_public_key = "ssh-ed25519 AAAA... you@your-host"
+
+
+# app tier (names come from: cd shared && terraform output)
+enable_app                  = false
+acr_name                    = "<shared ACR name>"
+models_storage_account_name = "<shared models storage account>"
+model_folder                = "siglip2-so400m-patch14-384@<rev12>"
+app_image_tag               = "<git sha of the pushed image>"

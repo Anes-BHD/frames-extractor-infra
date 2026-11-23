@@ -25,3 +25,8 @@ output "key_vault_name" {
 output "key_vault_uri" {
   value = module.keyvault.key_vault_uri
 }
+
+
+output "app_private_ip" {
+  value = module.app.private_ip_address
+}

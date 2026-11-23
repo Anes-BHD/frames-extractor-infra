@@ -35,3 +35,40 @@ variable "enable_database" {
   type    = bool
   default = false
 }
+
+variable "enable_app" {
+  type    = bool
+  default = false
+}
+
+variable "shared_resource_group_name" {
+  type    = string
+  default = "frames-shared-rg"
+}
+
+variable "acr_name" {
+  type    = string
+  default = ""
+}
+
+variable "models_storage_account_name" {
+  type    = string
+  default = ""
+}
+
+variable "model_folder" {
+  type    = string
+  default = ""
+}
+
+variable "app_image_tag" {
+  type    = string
+  default = ""
+}
+
+
+variable "enable_nginx_tier" {
+  description = "Demo nginx scale sets (not needed for the MLOps work)."
+  type        = bool
+  default     = false
+}
