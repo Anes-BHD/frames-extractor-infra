@@ -1,0 +1,87 @@
+#cloud-config
+package_update: true
+packages:
+  - docker.io
+  - curl
+  - python3
+
+write_files:
+  - path: /usr/local/bin/frames-bootstrap.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      exec > >(tee -a /var/log/frames-bootstrap.log) 2>&1
+
+      ACR="${acr_login_server}"
+      IMAGE_TAG="${image_tag}"
+      SA="${models_account}"
+      FOLDER="${model_folder}"
+      CLIENT_ID="${identity_client_id}"
+
+      echo "== data disk"
+      DISK=/dev/disk/azure/scsi1/lun0
+      for i in $(seq 1 60); do [ -b "$DISK" ] && break; sleep 5; done
+      if ! blkid "$DISK" >/dev/null 2>&1; then mkfs.ext4 -L framesdata "$DISK"; fi
+      mkdir -p /srv/frames-data
+      grep -q framesdata /etc/fstab || echo "LABEL=framesdata /srv/frames-data ext4 defaults,nofail 0 2" >> /etc/fstab
+      mount -a
+      chmod 0777 /srv/frames-data
+
+      echo "== azcopy"
+      if ! command -v azcopy >/dev/null; then
+        curl -sL https://aka.ms/downloadazcopy-v10-linux -o /tmp/azcopy.tgz
+        tar -xzf /tmp/azcopy.tgz -C /tmp
+        cp /tmp/azcopy_linux_amd64_*/azcopy /usr/local/bin/azcopy
+      fi
+
+      echo "== model weights from Blob (managed identity)"
+      DEST="/opt/models/$FOLDER"
+      if [ ! -f "$DEST/.complete" ]; then
+        mkdir -p /opt/models
+        export AZCOPY_AUTO_LOGIN_TYPE=MSI
+        export AZCOPY_MSI_CLIENT_ID="$CLIENT_ID"
+        for i in $(seq 1 12); do
+          if azcopy copy "https://$SA.blob.core.windows.net/models/$FOLDER" /opt/models --recursive; then break; fi
+          echo "azcopy not ready (attempt $i), retrying in 30s"; sleep 30
+        done
+        python3 - "$DEST" <<'PY'
+      import hashlib, json, sys, pathlib
+      d = pathlib.Path(sys.argv[1])
+      m = json.loads((d / "model.json").read_text())
+      for name, expected in m["files_sha256"].items():
+          h = hashlib.sha256()
+          with open(d / name, "rb") as f:
+              for chunk in iter(lambda: f.read(1 << 20), b""):
+                  h.update(chunk)
+          assert h.hexdigest() == expected, "checksum mismatch: " + name
+          print("checksum ok", name)
+      PY
+        touch "$DEST/.complete"
+      fi
+
+      echo "== docker login to ACR (managed identity -> AAD token -> ACR refresh token)"
+      for i in $(seq 1 12); do
+        AAD=$(curl -s -H "Metadata:true" "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F&client_id=$CLIENT_ID" | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])') || AAD=""
+        if [ -n "$AAD" ]; then
+          RT=$(curl -s -X POST "https://$ACR/oauth2/exchange" -d "grant_type=access_token&service=$ACR&access_token=$AAD" | python3 -c 'import sys,json; print(json.load(sys.stdin)["refresh_token"])') || RT=""
+          if [ -n "$RT" ] && echo "$RT" | docker login "$ACR" -u 00000000-0000-0000-0000-000000000000 --password-stdin; then break; fi
+        fi
+        echo "acr login not ready (attempt $i), retrying in 30s"; sleep 30
+      done
+
+      echo "== run the app"
+      docker rm -f frames >/dev/null 2>&1 || true
+      docker pull "$ACR/frames-extractor:$IMAGE_TAG"
+      docker run -d --name frames --restart unless-stopped -p 80:8000 \
+        -v /opt/models:/models:ro \
+        -v /srv/frames-data:/app/data \
+        -e FRAMES_SIGLIP_CHECKPOINT="/models/$FOLDER" \
+        -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
+        -e FRAMES_DEVICE=cpu -e FRAMES_BATCH_SIZE=8 \
+        "$ACR/frames-extractor:$IMAGE_TAG"
+      touch /var/lib/frames-bootstrap.done
+      echo "== bootstrap finished"
+
+runcmd:
+  - [ /usr/local/bin/frames-bootstrap.sh ]

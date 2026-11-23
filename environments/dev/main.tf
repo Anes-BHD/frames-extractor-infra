@@ -86,8 +86,10 @@ module "compute" {
   backend_pool_ids     = module.load_balancer.backend_pool_ids
 
   scale_sets = {
-    "a" = { zone = "1", subnet_id = module.network.subnet_ids["app-a"] }
-    "b" = { zone = "2", subnet_id = module.network.subnet_ids["app-b"] }
+    for k, v in {
+      "a" = { zone = "1", subnet_id = module.network.subnet_ids["app-a"] }
+      "b" = { zone = "2", subnet_id = module.network.subnet_ids["app-b"] }
+    } : k => v if var.enable_nginx_tier
   }
 }
 
@@ -113,4 +115,45 @@ module "keyvault" {
 
   store_db_password = var.enable_database
   db_admin_password = module.database.admin_password
+}
+
+
+data "azurerm_container_registry" "shared" {
+  count               = var.enable_app ? 1 : 0
+  name                = var.acr_name
+  resource_group_name = var.shared_resource_group_name
+}
+
+data "azurerm_storage_account" "models" {
+  count               = var.enable_app ? 1 : 0
+  name                = var.models_storage_account_name
+  resource_group_name = var.shared_resource_group_name
+}
+
+module "app" {
+  source = "../../modules/app"
+
+  project             = var.project
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this.name
+  tags                = local.tags
+
+  enable_app           = var.enable_app
+  subnet_id            = module.network.subnet_ids["app-a"]
+  app_asg_id           = module.security.app_asg_id
+  admin_ssh_public_key = var.admin_ssh_public_key
+
+  identity_id           = module.keyvault.identity_id
+  identity_principal_id = module.keyvault.identity_principal_id
+  identity_client_id    = module.keyvault.identity_client_id
+
+  acr_id                      = try(data.azurerm_container_registry.shared[0].id, "")
+  acr_login_server            = try(data.azurerm_container_registry.shared[0].login_server, "")
+  models_storage_account_id   = try(data.azurerm_storage_account.models[0].id, "")
+  models_storage_account_name = var.models_storage_account_name
+  model_folder                = var.model_folder
+  image_tag                   = var.app_image_tag
+  attach_to_gateway           = var.enable_app_gateway
+  backend_pool_ids            = tolist(module.load_balancer.backend_pool_ids)
 }
