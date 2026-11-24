@@ -32,6 +32,10 @@ resource "azurerm_container_registry" "this" {
   sku                 = "Basic"
   admin_enabled       = false
   tags                = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # ---------- Model storage (Azure AD auth only, no shared keys) ----------
@@ -60,12 +64,20 @@ resource "azurerm_storage_account" "models" {
   }
 
   tags = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "azurerm_storage_container" "models" {
   name                  = "models"
   storage_account_id    = azurerm_storage_account.models.id
   container_access_type = "private"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # ---------- Roles for the human operator (push images, upload models) ----------

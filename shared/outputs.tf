@@ -25,3 +25,16 @@ output "models_storage_account_id" {
 output "models_container_name" {
   value = azurerm_storage_container.models.name
 }
+
+
+output "log_analytics_workspace_name" {
+  value = azurerm_log_analytics_workspace.this.name
+}
+
+output "log_analytics_workspace_id" {
+  value = azurerm_log_analytics_workspace.this.id
+}
+
+output "app_insights_name" {
+  value = azurerm_application_insights.this.name
+}
