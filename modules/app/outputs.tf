@@ -5,3 +5,8 @@ output "private_ip_address" {
 output "vm_name" {
   value = try(azurerm_linux_virtual_machine.this[0].name, null)
 }
+
+
+output "vm_id" {
+  value = try(azurerm_linux_virtual_machine.this[0].id, null)
+}

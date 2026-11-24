@@ -76,11 +76,12 @@ resource "azurerm_linux_virtual_machine" "this" {
   }
 
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
-    acr_login_server   = var.acr_login_server
-    image_tag          = var.image_tag
-    models_account     = var.models_storage_account_name
-    model_folder       = var.model_folder
-    identity_client_id = var.identity_client_id
+    acr_login_server              = var.acr_login_server
+    image_tag                     = var.image_tag
+    models_account                = var.models_storage_account_name
+    model_folder                  = var.model_folder
+    identity_client_id            = var.identity_client_id
+    appinsights_connection_string = var.appinsights_connection_string
   }))
 
   # Boot only after the roles exist, so the first pull does not race them.
