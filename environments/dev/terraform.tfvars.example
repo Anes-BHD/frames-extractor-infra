@@ -11,3 +11,8 @@ acr_name                    = "<shared ACR name>"
 models_storage_account_name = "<shared models storage account>"
 model_folder                = "siglip2-so400m-patch14-384@<rev12>"
 app_image_tag               = "<git sha of the pushed image>"
+
+
+# monitoring (needs the shared/ Log Analytics workspace)
+enable_monitoring = false
+alert_email       = "you@example.com"

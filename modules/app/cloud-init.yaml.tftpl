@@ -18,6 +18,7 @@ write_files:
       SA="${models_account}"
       FOLDER="${model_folder}"
       CLIENT_ID="${identity_client_id}"
+      APPI="${appinsights_connection_string}"
 
       echo "== data disk"
       DISK=/dev/disk/azure/scsi1/lun0
@@ -74,11 +75,13 @@ write_files:
       docker rm -f frames >/dev/null 2>&1 || true
       docker pull "$ACR/frames-extractor:$IMAGE_TAG"
       docker run -d --name frames --restart unless-stopped -p 80:8000 \
+        --log-driver syslog --log-opt tag=frames \
         -v /opt/models:/models:ro \
         -v /srv/frames-data:/app/data \
         -e FRAMES_SIGLIP_CHECKPOINT="/models/$FOLDER" \
         -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
         -e FRAMES_DEVICE=cpu -e FRAMES_BATCH_SIZE=8 \
+        -e APPLICATIONINSIGHTS_CONNECTION_STRING="$APPI" \
         "$ACR/frames-extractor:$IMAGE_TAG"
       touch /var/lib/frames-bootstrap.done
       echo "== bootstrap finished"

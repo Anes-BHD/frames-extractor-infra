@@ -49,3 +49,11 @@ variable "backend_pool_ids" {
   type    = list(string)
   default = []
 }
+
+
+variable "appinsights_connection_string" {
+  description = "Application Insights connection string for the app telemetry (ingestion only)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

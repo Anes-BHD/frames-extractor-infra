@@ -72,3 +72,14 @@ variable "enable_nginx_tier" {
   type        = bool
   default     = false
 }
+
+
+variable "enable_monitoring" {
+  type    = bool
+  default = false
+}
+
+variable "alert_email" {
+  type    = string
+  default = ""
+}

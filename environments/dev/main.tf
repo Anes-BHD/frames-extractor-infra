@@ -148,12 +148,42 @@ module "app" {
   identity_principal_id = module.keyvault.identity_principal_id
   identity_client_id    = module.keyvault.identity_client_id
 
-  acr_id                      = try(data.azurerm_container_registry.shared[0].id, "")
-  acr_login_server            = try(data.azurerm_container_registry.shared[0].login_server, "")
-  models_storage_account_id   = try(data.azurerm_storage_account.models[0].id, "")
-  models_storage_account_name = var.models_storage_account_name
-  model_folder                = var.model_folder
-  image_tag                   = var.app_image_tag
-  attach_to_gateway           = var.enable_app_gateway
-  backend_pool_ids            = tolist(module.load_balancer.backend_pool_ids)
+  acr_id                        = try(data.azurerm_container_registry.shared[0].id, "")
+  acr_login_server              = try(data.azurerm_container_registry.shared[0].login_server, "")
+  models_storage_account_id     = try(data.azurerm_storage_account.models[0].id, "")
+  models_storage_account_name   = var.models_storage_account_name
+  model_folder                  = var.model_folder
+  image_tag                     = var.app_image_tag
+  attach_to_gateway             = var.enable_app_gateway
+  backend_pool_ids              = tolist(module.load_balancer.backend_pool_ids)
+  appinsights_connection_string = try(data.azurerm_application_insights.shared[0].connection_string, "")
+}
+
+
+data "azurerm_log_analytics_workspace" "shared" {
+  count               = var.enable_monitoring ? 1 : 0
+  name                = "${var.project}-shared-law"
+  resource_group_name = var.shared_resource_group_name
+}
+
+data "azurerm_application_insights" "shared" {
+  count               = var.enable_monitoring ? 1 : 0
+  name                = "${var.project}-shared-appi"
+  resource_group_name = var.shared_resource_group_name
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  project             = var.project
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this.name
+  tags                = local.tags
+
+  enable_monitoring = var.enable_monitoring && var.enable_app
+  vm_id             = module.app.vm_id
+  identity_id       = module.keyvault.identity_id
+  workspace_id      = try(data.azurerm_log_analytics_workspace.shared[0].id, "")
+  alert_email       = var.alert_email
 }
